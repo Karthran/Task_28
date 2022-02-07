@@ -1,31 +1,13 @@
-﻿// DEBUG
-#include <iostream>
-
+﻿#include <iostream>
 #include <random>
 #include <memory>
 #include <thread>
 #include <future>
 #include <chrono>
-#include <mutex>
-#include <atomic>
 
 static const size_t ARRAY_SIZE = 1000000u;
 static const size_t CUT_OFF = 100000u;
 static bool multi_thread = true;
-std::atomic<unsigned int> available_thread = 0;
-
-std::mutex av;
-
-auto checkCutOff(size_t amount) -> bool
-{
-    return amount > CUT_OFF;
-}
-
-auto checkHardwareConcurrency(size_t amount = 0) -> bool
-{
-    //    std::cout << "Thread left: " << available_thread << std::endl;
-    return available_thread > 0;
-}
 
 template <typename T>
 auto merge(T* arr, size_t begin, size_t middle, size_t end) -> void
@@ -65,82 +47,26 @@ auto merge(T* arr, size_t begin, size_t middle, size_t end) -> void
 }
 
 template <typename T>
-auto mergeSort(T* arr, size_t begin, size_t end, bool (*pred)(size_t)) -> void
+auto mergeSort(T* arr, size_t begin, size_t end) -> void
 {
-    // std::cout << "Thread left: " << available_thread << std::endl;
-
     if (begin >= end) return;
     auto middle = (begin + end) / 2;
-    if (multi_thread && pred(middle - begin))
+    if (multi_thread && middle - begin > CUT_OFF)
     {
-        auto f = std::async(std::launch::async, [&]() { mergeSort(arr, begin, middle, pred); });
-        mergeSort(arr, middle + 1, end, pred);
+        auto f = std::async(std::launch::async, [&]() { mergeSort(arr, begin, middle); });
+        mergeSort(arr, middle + 1, end);
     }
     else
     {
-        mergeSort(arr, begin, middle, pred);
-        mergeSort(arr, middle + 1, end, pred);
+        mergeSort(arr, begin, middle);
+        mergeSort(arr, middle + 1, end);
     }
     merge(arr, begin, middle, end);
 }
 
-template <typename T>
-auto mergeSort_adaptive(T* arr, size_t begin, size_t end, bool (*pred)(size_t)) -> void
-{
-//    std::cout << "Thread left: " << available_thread << std::endl;
-
-    if (begin >= end) return;
-    auto middle = (begin + end) / 2;
-
-    //av.lock();
-    if (multi_thread && pred(middle - begin))
-    {
-        //std::cout << "Start New Thread : " << available_thread << std::endl;
-
-        --available_thread;
-//        std::cout << "Start Thread left: " << available_thread << std::endl;
-        //av.unlock();
-        auto f = std::async(std::launch::async, [&]() { mergeSort(arr, begin, middle, pred); });
-        mergeSort_adaptive(arr, middle + 1, end, pred);
-        {
-           // std::lock_guard<std::mutex> lock(av);
-            //av.lock();
-            ++available_thread;
-            //av.unlock();
-//            std::cout << "Stop Thread left: " << available_thread << std::endl;
-        }
-    }
-    else
-    {
-        //std::cout << "Work in Current Thread left: " << available_thread << std::endl;
-
-        //av.unlock();
-        mergeSort_adaptive(arr, begin, middle, pred);
-        mergeSort_adaptive(arr, middle + 1, end, pred);
-    }
-    merge(arr, begin, middle, end);
-}
-
-auto foo() -> void
-{
-    auto f = std::async(std::launch::async, []() { std::this_thread::sleep_for(std::chrono::seconds(5)); });
-    std::cout << "stop" << std::endl;
-}
 
 auto main() -> int
 {
-    // std::cout << "Start" << std::endl;
-    // foo();
-    // std::cout << "End" << std::endl;
-
-    bool (*cut_off)(size_t) = checkCutOff;
-    bool (*concurrency)(size_t) = checkHardwareConcurrency;
-    available_thread = std::thread::hardware_concurrency();
-
-    std::cout << available_thread << std::endl;
-
-  //  int arr[ARRAY_SIZE]{};
-
     std::unique_ptr<int[]> arr(new int[ARRAY_SIZE]);
 
     for (auto i{0u}; i < ARRAY_SIZE; ++i)
@@ -149,7 +75,7 @@ auto main() -> int
     }
     auto begin = std::chrono::system_clock::now();
 
-    mergeSort(arr.get(), 0, ARRAY_SIZE - 1, cut_off);
+    mergeSort(arr.get(), 0, ARRAY_SIZE - 1);
 
     auto end = std::chrono::system_clock::now();
 
