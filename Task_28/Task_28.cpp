@@ -64,15 +64,18 @@ auto mergeSort(T* arr, size_t begin, size_t end) -> void
     merge(arr, begin, middle, end);
 }
 
-
 auto main() -> int
 {
     std::unique_ptr<int[]> arr(new int[ARRAY_SIZE]);
-
+    srand(1);
     for (auto i{0u}; i < ARRAY_SIZE; ++i)
     {
         arr.get()[i] = rand();
     }
+    multi_thread = false;
+
+    std::cout << "Single thread" << std::endl;
+
     auto begin = std::chrono::system_clock::now();
 
     mergeSort(arr.get(), 0, ARRAY_SIZE - 1);
@@ -85,7 +88,30 @@ auto main() -> int
     auto duration_end = end.time_since_epoch();
     auto millis_end = std::chrono::duration_cast<std::chrono::milliseconds>(duration_end).count();
 
-    std::cout << "The time: " << millis_end - millis_beg << " milliseconds" << std::endl;
+    std::cout << "The time: " << millis_end - millis_beg << " milliseconds" << std::endl << std::endl;
+
+    std::cout << "Multithread" << std::endl;
+
+    srand(1);
+    for (auto i{0u}; i < ARRAY_SIZE; ++i)
+    {
+        arr.get()[i] = rand();
+    }
+    multi_thread = true;
+
+    auto begin_mt = std::chrono::system_clock::now();
+
+    mergeSort(arr.get(), 0, ARRAY_SIZE - 1);
+
+    auto end_mt = std::chrono::system_clock::now();
+
+    auto duration_beg_mt = begin_mt.time_since_epoch();
+    auto millis_beg_mt = std::chrono::duration_cast<std::chrono::milliseconds>(duration_beg_mt).count();
+
+    auto duration_end_mt = end_mt.time_since_epoch();
+    auto millis_end_mt = std::chrono::duration_cast<std::chrono::milliseconds>(duration_end_mt).count();
+
+    std::cout << "The time: " << millis_end_mt - millis_beg_mt << " milliseconds" << std::endl;
 
     return 0;
 }
